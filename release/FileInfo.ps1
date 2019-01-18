@@ -1,23 +1,16 @@
-
 # Helper method to write file length in a more human readable format
-function Write-FileLength
-{
-    param ($length)
+function Write-FileLength {
+    param (
+        $length
+    )
 
-    if ($null -eq $length)
-    {
+    if ($length -eq $null) {
         return ""
-    }
-    elseif ($length -ge 1GB)
-    {
+    } elseif ($length -ge 1GB) {
         return ($length / 1GB).ToString("F") + 'GB'
-    }
-    elseif ($length -ge 1MB)
-    {
+    } elseif ($length -ge 1MB) {
         return ($length / 1MB).ToString("F") + 'MB'
-    }
-    elseif ($length -ge 1KB)
-    {
+    } elseif ($length -ge 1KB) {
         return ($length / 1KB).ToString("F") + 'KB'
     }
 
@@ -25,9 +18,11 @@ function Write-FileLength
 }
 
 # Outputs a line of a DirectoryInfo or FileInfo
-function Write-Color-LS
-{
-    param ([string]$color = "white", $file)
+function Write-Color-LS {
+    param (
+        [string]$color = "white",
+        $file
+    )
 
     if ($file -is [IO.DirectoryInfo])
     {
@@ -36,7 +31,7 @@ function Write-Color-LS
     }
     else
     {
-        $length = Write-FileLength $file.length
+        $length = Write-FileLength $file.length $global:PSColor.HumanReadableFileLength
         $name = $file.name
     }
 
@@ -50,8 +45,7 @@ function Write-Color-LS
 
 function FileInfo {
     param (
-        [Parameter(Mandatory=$True,Position=1)]
-        $file
+        [Parameter(Mandatory=$True,Position=1)] [System.IO.FileSystemInfo] $file
     )
 
     $regex_opts = ([System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
@@ -67,39 +61,31 @@ function FileInfo {
     $compressed = New-Object System.Text.RegularExpressions.Regex(
         $global:PSColor.File.Compressed.Pattern, $regex_opts)
 
-    if($script:showHeader)
-    {
-        Write-Host (pwd) -foregroundcolor "Green" -noNewLine
-        Write-Host ':'
-        $script:showHeader=$false
+    if ($file -is [System.IO.DirectoryInfo]) {
+        $currentdir = $file.Parent.FullName
+    } else {
+        $currentdir = $file.DirectoryName
     }
 
-    if ($hidden.IsMatch($file.Name))
-    {
+    if ($script:directory -ne $currentdir) {
+       $script:directory = $currentdir
+       Write-Host "$currentdir" -foregroundcolor "Green" -noNewLine
+       Write-Host ":"
+    }
+
+    if ($hidden.IsMatch($file.Name)) {
         Write-Color-LS $global:PSColor.File.Hidden.Color $file
-    }
-    elseif ($file -is [System.IO.DirectoryInfo])
-    {
+    } elseif ($file -is [System.IO.DirectoryInfo]) {
         Write-Color-LS $global:PSColor.File.Directory.Color $file
-    }
-    elseif ($code.IsMatch($file.Name))
-    {
+    } elseif ($code.IsMatch($file.Name)) {
         Write-Color-LS $global:PSColor.File.Code.Color $file
-    }
-    elseif ($executable.IsMatch($file.Name))
-    {
+    } elseif ($executable.IsMatch($file.Name)) {
         Write-Color-LS $global:PSColor.File.Executable.Color $file
-    }
-    elseif ($text_files.IsMatch($file.Name))
-    {
+    } elseif ($text_files.IsMatch($file.Name)) {
         Write-Color-LS $global:PSColor.File.Text.Color $file
-    }
-    elseif ($compressed.IsMatch($file.Name))
-    {
+    } elseif ($compressed.IsMatch($file.Name)) {
         Write-Color-LS $global:PSColor.File.Compressed.Color $file
-    }
-    else
-    {
+    } else {
         Write-Color-LS $global:PSColor.File.Default.Color $file
     }
 }
