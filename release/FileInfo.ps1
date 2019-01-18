@@ -31,7 +31,7 @@ function Write-Color-LS {
     }
     else
     {
-        $length = Write-FileLength $file.length $global:PSColor.HumanReadableFileLength
+        $length = Write-FileLength $file.length
         $name = $file.name
     }
 
@@ -67,10 +67,15 @@ function FileInfo {
         $currentdir = $file.DirectoryName
     }
 
-    if ($script:directory -ne $currentdir) {
-       $script:directory = $currentdir
-       Write-Host "$currentdir" -foregroundcolor "Green" -noNewLine
-       Write-Host ":"
+    # should probably rename showHeader to firstRun
+    if ($script:directory -ne $currentdir -or $script:showHeader) {
+        $script:directory = $currentdir
+        $script:showHeader = $false
+        if ($script:directory -ne (pwd))
+        {
+            write-Host
+            Write-Host "$currentdir" -foregroundcolor "Green"
+        }
     }
 
     if ($hidden.IsMatch($file.Name)) {
