@@ -4,7 +4,7 @@ function Write-FileLength
 {
     param ($length)
 
-    if ($length -eq $null)
+    if ($null -eq $length)
     {
         return ""
     }
@@ -29,7 +29,23 @@ function Write-Color-LS
 {
     param ([string]$color = "white", $file)
 
-    Write-host ("{0,-7} {1,25} {2,10} {3}" -f $file.mode, ([String]::Format("{0,10}  {1,8}", $file.LastWriteTime.ToString("d"), $file.LastWriteTime.ToString("t"))), (Write-FileLength $file.length), $file.name) -foregroundcolor $color
+    if ($file -is [IO.DirectoryInfo])
+    {
+        $length = ''
+        $name = $file.name + '\'
+    }
+    else
+    {
+        $length = Write-FileLength $file.length
+        $name = $file.name
+    }
+
+    Write-host -foregroundcolor $color (
+        "{0} {1} {2,8} {3}" -f
+            $file.mode,
+            ('{0:dd-MMM-yy} {0:hh:mm}' -f $file.LastWriteTime).ToLower(),
+            $length,
+            $name)
 }
 
 function FileInfo {
@@ -53,12 +69,9 @@ function FileInfo {
 
     if($script:showHeader)
     {
-       Write-Host
-       Write-Host "    Directory: " -noNewLine
-       Write-Host " $(pwd)`n" -foregroundcolor "Green"
-       Write-Host "Mode                LastWriteTime     Length Name"
-       Write-Host "----                -------------     ------ ----"
-       $script:showHeader=$false
+        Write-Host (pwd) -foregroundcolor "Green" -noNewLine
+        Write-Host ':'
+        $script:showHeader=$false
     }
 
     if ($hidden.IsMatch($file.Name))

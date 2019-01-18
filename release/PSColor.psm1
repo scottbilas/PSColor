@@ -91,7 +91,6 @@ function Out-Default {
     end
     {
         try {
-            write-host ""
             $script:showHeader=$true
             $steppablePipeline.End()
         } catch {
