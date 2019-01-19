@@ -70,12 +70,12 @@ function FileInfo {
     # should probably rename showHeader to firstRun
     if ($script:directory -ne $currentdir -or $script:showHeader) {
         $script:directory = $currentdir
-        $script:showHeader = $false
         if ($script:directory -ne (pwd))
         {
-            write-Host
+            if (-not $script:showHeader) { write-Host }
             Write-Host "$currentdir" -foregroundcolor "Green"
         }
+        $script:showHeader = $false
     }
 
     if ($hidden.IsMatch($file.Name)) {
