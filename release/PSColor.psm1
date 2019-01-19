@@ -9,12 +9,15 @@ Add-Type -assemblyname System.ServiceProcess
 $global:PSColor = @{
     File = @{
         Default    = @{ Color = 'White' }
-        Directory  = @{ Color = 'Cyan'}
+        Directory  = @{ Color = 'Cyan' }
+        BrokenLink = @{ Color = 'DarkRed' }
         Hidden     = @{ Color = 'DarkGray'; Pattern = '^\.' }
-        Code       = @{ Color = 'Magenta'; Pattern = '\.(java|c|cpp|cs|js|css|html)$' }
-        Executable = @{ Color = 'Red'; Pattern = '\.(exe|bat|cmd|py|pl|ps1|psm1|vbs|rb|reg)$' }
-        Text       = @{ Color = 'Yellow'; Pattern = '\.(txt|cfg|conf|ini|csv|log|config|xml|yml|md|markdown)$' }
-        Compressed = @{ Color = 'Green'; Pattern = '\.(zip|tar|gz|rar|jar|war|7z)$' }
+        Custom = @{
+            Code       = @{ Color = 'Magenta'; Pattern = '\.(java|c|cpp|cs|js|css|html)$' }
+            Executable = @{ Color = 'Red'; Pattern = '\.(exe|bat|cmd|py|pl|ps1|psm1|vbs|rb|reg)$' }
+            Text       = @{ Color = 'Yellow'; Pattern = '\.(txt|cfg|conf|ini|csv|log|config|xml|yml|md|markdown)$' }
+            Compressed = @{ Color = 'Green'; Pattern = '\.(zip|tar|gz|rar|jar|war|7z)$' }
+        }
     }
     Service = @{
         Default = @{ Color = 'White' }
