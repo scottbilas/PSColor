@@ -13,20 +13,15 @@ function Write-FileLength($length) {
     return $length.ToString() + '  '
 }
 
-# Outputs a line of a DirectoryInfo or FileInfo
-function Write-Color-LS([string]$color = "white", $file) {
+function Get-DevIcon($file) {
     if ($file -is [IO.DirectoryInfo])
     {
-        $length = ''
-        $name = $file.name + '\'
         $icon = $dir_node_exact_matches[$file.name]
         if (!$icon) { $icon = $dir_node_default }
     }
     else
     {
-        $length = Write-FileLength $file.length
-        $name = $file.name
-        $icon = $file_node_exact_matches[$name]
+        $icon = $file_node_exact_matches[$file.name]
         if (!$icon) {
             $icon = $file_node_extensions[[io.path]::GetExtension($name) -replace '^\.', '']
             if (!$icon) {
@@ -35,12 +30,28 @@ function Write-Color-LS([string]$color = "white", $file) {
         }
     }
 
+    $icon
+}
+
+# Outputs a line of a DirectoryInfo or FileInfo
+function Write-Color-LS([string]$color = "white", $file) {
+    if ($file -is [IO.DirectoryInfo])
+    {
+        $length = ''
+        $name = $file.name + '\'
+    }
+    else
+    {
+        $length = Write-FileLength $file.length
+        $name = $file.name
+    }
+
     Write-host -foregroundcolor $color -nonew (
         "{0} {1} {2,8} {3} {4}" -f
             $file.mode,
             ('{0:dd-MMM-yy} {0:hh:mm}' -f $file.LastWriteTime).ToLower(),
             $length,
-            $icon,
+            (get-devicon $file),
             $name)
 
     if ($file.target -ne $null) {
@@ -113,7 +124,7 @@ Function Get-ChildItemColorFormatWide($path) {
     $Items = Get-ChildItem -path $path
 
     $lnStr = $Items | Select-Object Name | Sort-Object { "$_".Length } -Descending | Select-Object -First 1
-    $len = $lnStr.Name.Length + 1 # include space for trailing backslash (TODO: also leading icon)
+    $len = $lnStr.Name.Length + 3 # extra for icon, space, trailing backslash
     $width = $Host.UI.RawUI.WindowSize.Width
     $cols = If ($len) {[math]::Floor(($width + 1) / ($len + 2))} Else {1}
     if (!$cols) {$cols = 1}
@@ -157,7 +168,7 @@ Function Get-ChildItemColorFormatWide($path) {
         $nnl = ++$i % $cols -ne 0
 
         # truncate the item name
-        $toWrite = $Item.Name
+        $toWrite = "$(get-devicon $item) $($Item.Name)"
         if ($Item -is [IO.DirectoryInfo]) {
             $toWrite += '\'
         }
