@@ -23,7 +23,7 @@ function Get-DevIcon($file) {
     {
         $icon = $file_node_exact_matches[$file.name]
         if (!$icon) {
-            $icon = $file_node_extensions[[io.path]::GetExtension($name) -replace '^\.', '']
+            $icon = $file_node_extensions[[io.path]::GetExtension($file.name) -replace '^\.', '']
             if (!$icon) {
                 $icon = $file_node_default
             }
