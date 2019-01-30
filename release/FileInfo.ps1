@@ -103,7 +103,7 @@ Function Get-ChildItemColorFormatWide($path) {
     $Items = Get-ChildItem -path $path
 
     $lnStr = $Items | Select-Object Name | Sort-Object { "$_".Length } -Descending | Select-Object -First 1
-    $len = $lnStr.Name.Length
+    $len = $lnStr.Name.Length + 1 # include space for trailing backslash (TODO: also leading icon)
     $width = $Host.UI.RawUI.WindowSize.Width
     $cols = If ($len) {[math]::Floor(($width + 1) / ($len + 2))} Else {1}
     if (!$cols) {$cols = 1}
