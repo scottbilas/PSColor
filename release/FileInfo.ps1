@@ -34,6 +34,8 @@ function Write-Color-LS([string]$color = "white", $file) {
             $name)
 
     if ($file.target -ne $null) {
+        # TODO: deal with link target relative to file
+        # TODO: figure out why trailing \ sometimes added sometimes not like from ~ dir (may need to strip and force add)
         $linkpath = ([string]$file.target).trim() # need trim because there's a trailing space on target (not sure why)
         $link = get-item $linkpath -ea silent
         $color = get-color $link
@@ -150,9 +152,18 @@ Function Get-ChildItemColorFormatWide($path) {
             $toWrite += '\'
         }
         if ($Item.target) {
-            $toWrite += '>'
-            if (!(test-path $item.target)) {
-                $toWrite += '!'
+            $target = $item.target
+            ### TODO: need to resolve paths relative to source file
+            ### (this is broken for both `l` and `ll`)
+            # TODO: make nerdfonts optional based on prefs (may be possible to detect support in font from env var..)
+            <#if (![io.path]::ispathrooted($target)) {
+                $target = join-path $item.Name $target
+            }#>
+            if (test-path $target) {
+                $toWrite += [char]0xf838
+            }
+            else {
+                $toWrite += [char]0xf839
                 $color = $global:PSColor.File.BrokenLink.Color
             }
         }
