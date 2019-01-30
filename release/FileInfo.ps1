@@ -1,6 +1,6 @@
 ﻿# Helper method to write file length in a more human readable format
 function Write-FileLength($length) {
-    if ($length -eq $null) {
+    if (!$length) {
         return ""
     } elseif ($length -ge 1GB) {
         return ($length / 1GB).ToString("F") + 'GB'
@@ -54,22 +54,25 @@ function Write-Color-LS([string]$color = "white", $file) {
             (get-devicon $file),
             $name)
 
-    if ($file.target -ne $null) {
-        # TODO: deal with link target relative to file
-        # TODO: figure out why trailing \ sometimes added sometimes not like from ~ dir (may need to strip and force add)
-        $linkpath = ([string]$file.target).trim() # need trim because there's a trailing space on target (not sure why)
-        $link = get-item $linkpath -ea silent
+    if ($file.target) {
+
+        $target = $file.target[0]
+        if (![io.path]::IsPathRooted($target)) {
+            $target = join-path (split-path $file.fullname) $target
+        }
+
+        $link = get-item $target -ea silent
         $color = get-color $link
         if ($link -is [io.DirectoryInfo]) {
-            $linkpath += '\'
+            $target += '\'
         }
-        elseif ($link -eq $null) {
+        elseif (!$link) {
             $color = $global:PSColor.File.BrokenLink.Color
-            $linkpath = "!! " + $linkpath
+            $target = "$([char]0xe009) " + $target
         }
 
         write-host -foregroundcolor $global:PSColor.File.Default.Color -nonew " $([char]0xfc32) "
-        write-host -foregroundcolor $color $linkpath
+        write-host -foregroundcolor $color $target
     }
     else {
         write-host
@@ -105,7 +108,7 @@ function FileInfo {
     # should probably rename showHeader to firstRun
     if ($script:directory -ne $currentdir -or $script:showHeader) {
         $script:directory = $currentdir
-        if ($script:directory -ne (pwd))
+        if ($script:directory -ne (Get-Location))
         {
             if (-not $script:showHeader) { write-Host }
             Write-Host "$currentdir" -foregroundcolor "Green"
@@ -158,7 +161,7 @@ Function Get-ChildItemColorFormatWide($path) {
 
         $Color = Get-Color $Item
 
-        If ($LastParentName -ne $ParentName -and $ParentName -ne (pwd)) {
+        If ($LastParentName -ne $ParentName -and $ParentName -ne (Get-Location)) {
             If($i -ne 0 -AND $Host.UI.RawUI.CursorPosition.X -ne 0){  # conditionally add an empty line
                 Write-Host
             }
@@ -173,13 +176,11 @@ Function Get-ChildItemColorFormatWide($path) {
             $toWrite += '\'
         }
         if ($Item.target) {
-            $target = $item.target
-            ### TODO: need to resolve paths relative to source file
-            ### (this is broken for both `l` and `ll`)
-            # TODO: make nerdfonts optional based on prefs (may be possible to detect support in font from env var..)
-            <#if (![io.path]::ispathrooted($target)) {
-                $target = join-path $item.Name $target
-            }#>
+            $target = $item.target[0]
+            if (![io.path]::IsPathRooted($target)) {
+                $target = join-path (split-path $item.fullname) $target
+            }
+
             if (test-path $target) {
                 $toWrite += [char]0xf838
             }
