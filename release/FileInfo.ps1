@@ -119,92 +119,93 @@ function FileInfo {
     Write-Color-LS (Get-Color $file) $file
 }
 
-# this func originally copied from https://github.com/joonro/Get-ChildItemColor/blob/develop/Get-ChildItemColor.psm
-Function Get-ChildItemColorFormatWide($path) {
-
-    $nnl = $True
-
-    $Items = Get-ChildItem -path $path
-
-    $lnStr = $Items | Select-Object Name | Sort-Object { "$_".Length } -Descending | Select-Object -First 1
-    $len = $lnStr.Name.Length + 3 # extra for icon, space, trailing backslash
-    $width = $Host.UI.RawUI.WindowSize.Width
-    $cols = If ($len) {[math]::Floor(($width + 1) / ($len + 2))} Else {1}
-    if (!$cols) {$cols = 1}
-
-    $i = 0
-    $pad = [math]::Ceiling(($width + 2) / $cols) - 3
+# this func derived from https://github.com/joonro/Get-ChildItemColor/blob/develop/Get-ChildItemColor.psm
+function Get-ChildItemColorFormatWide($path) {
 
     <# TODOS
-
-    * optimize silly regex perf horror show above
-    * this func overall is really slow and needs optimizing
-    * render names in columns top-down rather than left-right across columns
-    * each column should minimize its individual width rather than using a single width for everything (and ideally rewrap to optimize)
-    * the trailing '\' needs to be taken into account on names (currently only applied to $toWrite)
-    * implement -recurse and figure out how to wire up to default-output so we can get pipelining back
-
+        * implement -recurse
+        * figure out how to wire up to default-output so we can get pipelining back
     #>
 
-    ForEach ($Item in $Items) {
-        If ($Item.PSobject.Properties.Name -contains "PSParentPath") {
-            If ($Item.PSParentPath -match "FileSystem") {
-                $ParentName = $Item.PSParentPath.Replace("Microsoft.PowerShell.Core\FileSystem::", "")
-            }
-            ElseIf ($Item.PSParentPath -match "Registry") {
-                $ParentName = $Item.PSParentPath.Replace("Microsoft.PowerShell.Core\Registry::", "")
-            }
-        } Else {
-            $ParentName = ""
-            $LastParentName = $ParentName
+    $items = foreach ($item in Get-ChildItem -path $path) {
+
+        $displayText = "$(get-devicon $item) $($item.Name)"
+        $color = Get-Color $item
+
+        if ($item -is [IO.DirectoryInfo]) {
+            $displayText += '\'
         }
 
-        $Color = Get-Color $Item
-
-        If ($LastParentName -ne $ParentName -and $ParentName -ne (Get-Location)) {
-            If($i -ne 0 -AND $Host.UI.RawUI.CursorPosition.X -ne 0){  # conditionally add an empty line
-                Write-Host
-            }
-            Write-Host -Fore $global:PSColor.File.Directory.Color ("$ParentName")
-        }
-
-        $nnl = ++$i % $cols -ne 0
-
-        # truncate the item name
-        $toWrite = "$(get-devicon $item) $($Item.Name)"
-        if ($Item -is [IO.DirectoryInfo]) {
-            $toWrite += '\'
-        }
-        if ($Item.target) {
+        if ($item.target) {
             $target = $item.target[0]
-            if (![io.path]::IsPathRooted($target)) {
+            if (![IO.Path]::IsPathRooted($target)) {
                 $target = join-path (split-path $item.fullname) $target
             }
 
             if (test-path $target) {
-                $toWrite += [char]0xf838
+                $displayText += [char]0xf838 # link icon
             }
             else {
-                $toWrite += [char]0xf839
+                $displayText += [char]0xf839 # broken link icon
                 $color = $global:PSColor.File.BrokenLink.Color
             }
         }
 
-        If ($toWrite.length -gt $pad) {
-            $toWrite = $toWrite.Substring(0, $pad - 3) + "..."
-        }
+        <#
+        TODO: implement this when implement -recurse. (will also need to split the columns
+        loop by parentpath.)
 
-        Write-Host ("{0,-$pad}" -f $toWrite) -Fore $Color -NoNewLine:$nnl
+        $parentName = ""
+        if ($item.PSobject.Properties.Name -contains "PSParentPath") {
+            if ($Item.PSParentPath -match "FileSystem") {
+                $parentName = $Item.PSParentPath.Replace("Microsoft.PowerShell.Core\FileSystem::", "")
+            }
+            elseif ($Item.PSParentPath -match "Registry") {
+                $parentName = $Item.PSParentPath
+                $parentName = $parentName.Replace("Microsoft.PowerShell.Core\Registry::", "")
 
-        If ($nnl) {
-            Write-Host "  " -NoNewLine
-        }
+                #TODO: shorten hk's
+                #$parentName = $parentName.Replace("^HKEY_LOCAL_MACHINE\", "HKLM\")
+            }
+        }#>
 
-        $LastParentName = $ParentName
+        @{ item = $item; displayText = $displayText; color = $color } #; parentName = $parentName }
     }
 
-    If ($nnl) {  # conditionally add an empty line
-        Write-Host
+    # TODO: adjust when implement parentName above
+    if ($path -and (resolve-path $path) -ne (get-location)) {
+        write-host -fore $global:PSColor.File.Directory.Color "$([char]0xf63b) $(resolve-path $path)"
+    }
+
+    $WIDTH = $Host.UI.RawUI.WindowSize.Width
+    $SEPARATOR = '  '
+
+    # ported from https://www.perlmonks.org/bare/?node_id=405308
+    $lines = foreach ($rows in 1..$items.length) {
+        $cols = [int](($items.length + $rows - 1) / $rows);
+        $aoa =
+            0..($cols-1) |
+            foreach-object { $_ * $rows } |
+            foreach-object { ,$items[ $_..($_+$rows-1) ] } |
+            where-object { $_.length }
+        $widths =
+            $aoa |
+            foreach-object { ($_ | %{ $_.displayText.length } | measure-object -max).maximum }
+
+        $sum = ($widths | measure-object -sum).sum + ($widths.length * $SEPARATOR.length)
+        if ($sum -le $WIDTH) {
+            foreach ($row in 0..($rows-1)) {
+                0..$aoa.length | %{
+                    $col = $aoa[$_]
+                    if ($row -lt $col.length) {
+                        $cell = $col[$row]
+                        write-host ("{0,-$($widths[$_])}{1}" -f $cell.displayText, $SEPARATOR) -fore $cell.color -nonew
+                    }
+                }
+                write-host
+            }
+            break
+        }
     }
 }
 
