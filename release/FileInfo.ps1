@@ -83,6 +83,9 @@ function Get-Color($file) {
     if ($file.Name -match $global:PSColor.File.Hidden.Pattern) {
         return $global:PSColor.File.Hidden.Color
     }
+    if ($file.mode.contains('h')) {
+        return $global:PSColor.File.Hidden.Color
+    }
     if ($file -is [IO.DirectoryInfo]) {
         return $global:PSColor.File.Directory.Color
     }
