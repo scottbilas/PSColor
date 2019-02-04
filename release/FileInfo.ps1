@@ -130,7 +130,7 @@ function Get-ChildItemColorFormatWide($path) {
         * figure out how to wire up to default-output so we can get pipelining back
     #>
 
-    $items = foreach ($item in Get-ChildItem -path $path) {
+    $items = @(foreach ($item in Get-ChildItem -path $path) {
 
         $displayText = "$(get-devicon $item) $($item.Name)"
         $color = Get-Color $item
@@ -173,7 +173,7 @@ function Get-ChildItemColorFormatWide($path) {
         }#>
 
         @{ item = $item; displayText = $displayText; color = $color } #; parentName = $parentName }
-    }
+    })
 
     # TODO: adjust when implement parentName above
     if ($path -and (resolve-path $path) -ne (get-location)) {
@@ -184,30 +184,32 @@ function Get-ChildItemColorFormatWide($path) {
     $SEPARATOR = '  '
 
     # ported from https://www.perlmonks.org/bare/?node_id=405308
-    $lines = foreach ($rows in 1..$items.length) {
-        $cols = [int](($items.length + $rows - 1) / $rows);
-        $aoa =
-            0..($cols-1) |
-            foreach-object { $_ * $rows } |
-            foreach-object { ,$items[ $_..($_+$rows-1) ] } |
-            where-object { $_.length }
-        $widths =
-            $aoa |
-            foreach-object { ($_ | %{ $_.displayText.length } | measure-object -max).maximum }
+    if ($items.length) {
+        foreach ($rows in 1..$items.length) {
+            $cols = [int](($items.length + $rows - 1) / $rows);
+            $aoa = @(
+                0..($cols-1) |
+                foreach-object { $_ * $rows } |
+                foreach-object { ,$items[ $_..($_+$rows-1) ] } |
+                where-object { $_.length })
+            $widths = @(
+                $aoa |
+                foreach-object { ($_ | %{ $_.displayText.length } | measure-object -max).maximum })
 
-        $sum = ($widths | measure-object -sum).sum + ($widths.length * $SEPARATOR.length)
-        if ($sum -le $WIDTH) {
-            foreach ($row in 0..($rows-1)) {
-                0..$aoa.length | %{
-                    $col = $aoa[$_]
-                    if ($row -lt $col.length) {
-                        $cell = $col[$row]
-                        write-host ("{0,-$($widths[$_])}{1}" -f $cell.displayText, $SEPARATOR) -fore $cell.color -nonew
+            $sum = ($widths | measure-object -sum).sum + ($widths.length * $SEPARATOR.length)
+            if ($sum -le $WIDTH) {
+                foreach ($row in 0..($rows-1)) {
+                    0..$aoa.length | %{
+                        $col = $aoa[$_]
+                        if ($row -lt $col.length) {
+                            $cell = $col[$row]
+                            write-host ("{0,-$($widths[$_])}{1}" -f $cell.displayText, $SEPARATOR) -fore $cell.color -nonew
+                        }
                     }
+                    write-host
                 }
-                write-host
+                break
             }
-            break
         }
     }
 }
