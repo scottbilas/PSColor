@@ -74,7 +74,7 @@ function Write-Color-LS([string]$color = "white", $file) {
         $color = $global:PSColor.File.BrokenLink.Color
 
         if ($target) {
-            $link = get-item $target -ea silent
+            $link = get-item -force $target -ea silent
             if ($link -is [io.DirectoryInfo]) {
                 $color = get-color $link
                 $target += '\'
