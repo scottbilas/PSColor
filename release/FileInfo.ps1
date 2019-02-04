@@ -33,6 +33,12 @@ function Get-DevIcon($file) {
     $icon
 }
 
+# from https://stackoverflow.com/a/25705468/14582
+function Get-JunctionTarget($p_path)
+{
+    fsutil reparsepoint query $p_path | where-object { $_ -imatch 'Print Name:' } | foreach-object { $_ -replace 'Print Name\:\s*','' }
+}
+
 # Outputs a line of a DirectoryInfo or FileInfo
 function Write-Color-LS([string]$color = "white", $file) {
     if ($file -is [IO.DirectoryInfo])
@@ -54,21 +60,38 @@ function Write-Color-LS([string]$color = "white", $file) {
             (get-devicon $file),
             $name)
 
-    if ($file.target) {
-
-        $target = $file.target[0]
-        if (![io.path]::IsPathRooted($target)) {
-            $target = join-path (split-path $file.fullname) $target
+    if ($file.mode.contains('l')) {
+        if ($file.target) {
+            $target = $file.target[0]
+            if (![io.path]::IsPathRooted($target)) {
+                $target = join-path (split-path $file.fullname) $target
+            }
+        }
+        else {
+            $target = Get-JunctionTarget $file.fullname
         }
 
-        $link = get-item $target -ea silent
-        $color = get-color $link
-        if ($link -is [io.DirectoryInfo]) {
-            $target += '\'
+        $color = $global:PSColor.File.BrokenLink.Color
+
+        if ($target) {
+            $link = get-item $target -ea silent
+            if ($link -is [io.DirectoryInfo]) {
+                $color = get-color $link
+                $target += '\'
+            }
+            elseif ($link) {
+                $color = get-color $link
+            }
+            else {
+                # broken link, so just guess it matches
+                if ($file -is [io.Directoryinfo]) {
+                    $target += '\'
+                }
+                $target = "$([char]0xe009) " + $target
+            }
         }
-        elseif (!$link) {
-            $color = $global:PSColor.File.BrokenLink.Color
-            $target = "$([char]0xe009) " + $target
+        else {
+            $target = "$([char]0xe009)"
         }
 
         write-host -foregroundcolor $global:PSColor.File.Default.Color -nonew " $([char]0xfc32) "
@@ -114,7 +137,7 @@ function FileInfo {
         if ($script:directory -ne (Get-Location))
         {
             if (-not $script:showHeader) { write-Host }
-            Write-Host "$currentdir" -foregroundcolor "Green"
+            Write-Host "$([char]0xf63b) $currentdir" -foregroundcolor "Green"
         }
         $script:showHeader = $false
     }
